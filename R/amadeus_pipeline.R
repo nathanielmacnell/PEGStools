@@ -1,5 +1,7 @@
 library(amadeus)
 
+
+# Download data
 directory <- "data/"
 download_data(
   dataset_name = "narr",
@@ -13,6 +15,7 @@ download_data(
 
 list.files(file.path(directory, "weasd"))
 
+# Read the downloaded data into R (and apply some filters)
 weasd_process <- process_covariates(
   covariate = "narr",
   date = c("2022-01-01", "2022-01-05"),
@@ -23,9 +26,11 @@ weasd_process <- process_covariates(
 
 weasd_process
 
+# Load simulated PEGS data
 load("data/gis_simulated.RData")
 names(epr.gis)
 
+# Join weasd (snow cover) to simulated participants
 locs <- data.frame(id = epr.gis$epr_number, lon = epr.gis$gis_longitude, lat = epr.gis$gis_latitude)
 weasd_covar <- calculate_covariates(
   covariate = "narr",
