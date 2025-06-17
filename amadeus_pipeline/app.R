@@ -11,6 +11,8 @@ library(lubridate)
 library(shinybusy)
 library(shinyalert)
 library(stringr)
+library(bs4Dash)
+library(leaflet)
 
 # Get map data
 states <- map_data("state")
@@ -19,40 +21,67 @@ states <- map_data("state")
 available_data = list.files('modules', full.names = FALSE)
 available_data = str_match(available_data, "(.*?)UI")[,2]
 
+# Only load smoke plume data/narr functionality for now
+
 # Define UI for application that draws a histogram
-ui <- fluidPage(
-  theme = shinytheme(theme = 'flatly'),
-  sidebarLayout(
-    sidebarPanel(
-      h1("Amadeus Pipeline"),
-      fileInput(inputId = "fileInput", label = "Upload Participant Data"),
-      selectInput(inputId = "selectDatasetName", label = "Dataset Name",
-                  choices = c("")),
-      uiOutput("dynamicUI"),
-      actionButton(inputId = 'downloadSelected', label = 'Download and Link', class = 'btn-primary')
+ui <- dashboardPage(
+  dashboardHeader(title = "Amadeus Pipeline", status = "primary"),
+  dashboardSidebar( width = "400px",
+                    div(class="file-input",
+                        fileInput(inputId = "fileInput", label = "Upload Participant Data"),
+                    ),
+                    
+                    selectInput(inputId = "selectDatasetName", label = "Dataset Name",
+                                choices = c("")),
+                    uiOutput("dynamicUI"),
+                    actionButton(inputId = 'downloadSelected', label = 'Download and Link', class = 'btn-primary')
+  ),
+  dashboardBody(
+    tags$head(
+      includeCSS("www/styles.css")
     ),
-    mainPanel(
-      tabsetPanel(
-        tabPanel("Data Input",
-                 dataTableOutput("inputDisplay"),
-                 plotOutput("participantDisplay")
-        ),
-        tabPanel("Linked Data",
-                 dataTableOutput("linkDisplay")
-                 )
-      )
+    tabsetPanel(id = "Tabs",
+                tabPanel("Data Input",
+                         fluidRow(
+                           column(width = 4,
+                                  valueBoxOutput(outputId = 'recordsLoaded', width = NULL)
+                           ),
+                           column(width = 4,
+                                  valueBoxOutput(outputId = 'variablesLoaded', width = NULL)
+                           ),
+                           column(width = 4,
+                                  valueBoxOutput(outputId = 'dateRange', width = NULL)
+                           )
+                         ),
+                         dataTableOutput("inputDisplay"),
+                         leafletOutput("participantMap", height = "400px")
+                ),
+                tabPanel("Linked Data",
+                         fluidRow(
+                           column(width = 6,
+                                  valueBoxOutput(outputId = 'timeTaken', width = NULL)
+                           ),
+                           column(width = 6,
+                                  valueBoxOutput(outputId = 'variablesLinked', width = NULL)
+                           ),
+                         ),
+                         dataTableOutput("linkDisplay")
+                )
     )
   )
+  
   
 )
 
 # Define server logic
-server <- function(input, output) {
+server <- function(input, output, session) {
   
   updateSelectInput(inputId = "selectDatasetName", label = "Dataset Name",
-                    choices = available_data)
+                    choices = c("hms","narr"))
   
-  rv = reactiveValues(df = NULL)
+  rv = reactiveValues(df = NULL,
+                      joined = NULL,
+                      time_taken = NULL)
   
   # Display participant data
   observeEvent(input$fileInput, {
@@ -62,17 +91,82 @@ server <- function(input, output) {
     
     rv$df = epr.gis
     
-    output$inputDisplay = renderDataTable(datatable(epr.gis, rownames = FALSE, style = 'bootstrap'))
+    output$inputDisplay = renderDataTable(datatable(epr.gis, rownames = FALSE))
     
-    output$participantDisplay = renderPlot(
-      ggplot(states, aes(x = long, y = lat, group = group)) +
-        geom_polygon(fill = "white", color = "black") +
-        coord_fixed(1.3) +
-        theme_void() +
-        labs(title = "Continental US State Lines") +
-        geom_point(data = epr.gis, aes(x = gis_longitude, y = gis_latitude),
-                   inherit.aes = FALSE, shape = '.', color = 'blue')
+  })
+  
+  output$recordsLoaded = renderbs4ValueBox({
+    if(!is.null(rv$df)){
+      bs4ValueBox(
+        value = h1(nrow(rv$df)),
+        subtitle = h2("Records Present"),
+        color = "primary"
+      )
+    }else{
+      bs4ValueBox(
+        value = h1("0"),
+        subtitle = h2("Records Present"),
+        color = "primary"
+      )
+    }
+    
+  })
+  
+  output$variablesLoaded = renderbs4ValueBox({
+    if(!is.null(rv$df)){
+      bs4ValueBox(
+        value = h1(ncol(rv$df)),
+        subtitle = h2("Variables Present"),
+        color = "primary"
+      )
+    }else{
+      bs4ValueBox(
+        value = h1("0"),
+        subtitle = h2("Variables Present"),
+        color = "primary"
+      )
+    }
+  })
+  
+  output$dateRange = renderbs4ValueBox({
+    bs4ValueBox(
+      value = h1(paste0(year(input$dateRange[1]), "-", year(input$dateRange[2]))),
+      subtitle = h2("Date Range"),
+      color = "primary"
     )
+  })
+  
+  output$timeTaken = renderbs4ValueBox({
+    if(!is.null(rv$joined)){
+      bs4ValueBox(
+        value = h1(paste0(rv$time_taken, " Seconds")),
+        subtitle = h2("Time Taken"),
+        color = "primary" 
+      )
+    }else{
+      bs4ValueBox(
+        value = h1("0"),
+        subtitle = h2("Time Taken"),
+        color = "primary" 
+      )
+    }
+    
+  })
+  
+  output$variablesLinked = renderbs4ValueBox({
+    if(!is.null(rv$joined)){
+      bs4ValueBox(
+        value = h1(ncol(rv$joined)),
+        subtitle = h2("Variables Present"),
+        color = "primary" 
+      )
+    }else{
+      bs4ValueBox(
+        value = h1("0"),
+        subtitle = h2("Variables Present"),
+        color = "primary" 
+      )
+    }
     
   })
   
@@ -80,48 +174,7 @@ server <- function(input, output) {
   # Grab data and link to participants
   observeEvent(input$downloadSelected, {
     
-    shinybusy::show_modal_spinner(spin = "semipolar", text = "Downloading and linking...")
-    
-    directory <- "data/"
-    download_data(
-      dataset_name = input$selectDatasetName,
-      year = year(input$dateRange),
-      variable = input$selectVariable,
-      directory_to_save = directory,
-      acknowledgement = TRUE,
-      download = TRUE,
-      hash = FALSE,
-      remove_command = TRUE
-    )
-    
-    # Read the downloaded data into R (and apply some filters)
-    
-    weasd_process <- process_covariates(
-      covariate = input$selectDatasetName,
-      date = input$dateRange,
-      variable = input$selectVariable,
-      path = file.path(directory, input$selectVariable),
-      extent = NULL
-    )
-    
-    # Join weasd (snow cover) to simulated participants
-    locs <- data.frame(id = rv$df$epr_number, lon = rv$df$gis_longitude, lat = rv$df$gis_latitude)
-    weasd_covar <- calculate_covariates(
-      covariate = input$selectDatasetName,
-      from = weasd_process,
-      locs = locs,
-      locs_id = "id",
-      radius = 0,
-      geom = "sf"
-    )
-    
-    output$linkDisplay = renderDataTable(datatable(weasd_covar, style = 'bootstrap', rownames = FALSE))
-    
-    shinybusy::remove_modal_spinner()
-    
-    shinyalert::shinyalert(title = "Success!",
-                           text = "Check your linked data on the 'Linked Data' tab!",
-                           type = "success")
+    dynamicButton(input, output, server, rv, session)
     
   })
   
@@ -130,6 +183,32 @@ server <- function(input, output) {
     
     output$dynamicUI = renderUI(dynamicUI())
   }, ignoreInit = TRUE)
+  
+  # Interactive map
+  output$participantMap <- renderLeaflet({
+    req(rv$df)
+    
+    leaflet(rv$df) %>%
+      addProviderTiles(providers$CartoDB.Positron) %>%
+      addCircleMarkers(
+        lng = ~gis_longitude,
+        lat = ~gis_latitude,
+        radius = 5,
+        color = "#007bff",
+        fillColor = "#007bff",
+        fillOpacity = 0.7,
+        popup = ~paste("ID:", epr_number, "<br>",
+                       "Lat:", round(gis_latitude, 4), "<br>",
+                       "Lon:", round(gis_longitude, 4))
+      ) %>%
+      fitBounds(
+        lng1 = ~min(gis_longitude, na.rm = TRUE),
+        lat1 = ~min(gis_latitude, na.rm = TRUE),
+        lng2 = ~max(gis_longitude, na.rm = TRUE),
+        lat2 = ~max(gis_latitude, na.rm = TRUE)
+      )
+  })
+  
   
   
   
