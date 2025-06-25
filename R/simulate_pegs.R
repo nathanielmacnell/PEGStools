@@ -35,7 +35,7 @@ ggplot(epr.gis) +
   geom_point(aes(x=gis_longitude, y=gis_latitude), size=0.05)
 
 # save
-save(epr.gis, file='data/gis_simulated.RData')
+save(epr.gis, file='output/gis_simulated.RData')
 
 ##### 2. Simulate epr.ea #####
 epr.ea = data.frame(
@@ -46,4 +46,4 @@ epr.ea = data.frame(
 )
 
 # save
-save(epr.ea, file='data/exposomea_simulated.RData')
+save(epr.ea, file='output/exposomea_simulated.RData')

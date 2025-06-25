@@ -80,18 +80,18 @@ dynamicButton <- function(input, output, server, rv, session){
     geom = "sf"
   )
   
-  locs <- data.frame(site_id = epr.gis$epr_number, lon = epr.gis$gis_longitude, lat = epr.gis$gis_latitude)
-  locs_sf <- st_as_sf(locs, coords = c("lon","lat"), crs = 4326)
-  calculate_modis(
-    from = list.files("data/2024/001", pattern = "MOD13A1", full.names = TRUE),
-    locs = locs_sf,
-    locs_id = "site_id",
-    radius = c(0L, 1000L),
-    preprocess = process_modis_merge,
-    name_covariates = "MODIS_Grid_16DAY_500m_VI",
-    subdataset = "500m 16 days NDVI",
-    fun_summary = "mean"
-  )
+  # locs <- data.frame(site_id = epr.gis$epr_number, lon = epr.gis$gis_longitude, lat = epr.gis$gis_latitude)
+  # locs_sf <- st_as_sf(locs, coords = c("lon","lat"), crs = 4326)
+  # calculate_modis(
+  #   from = list.files("data/2024/001", pattern = "MOD13A1", full.names = TRUE),
+  #   locs = locs_sf,
+  #   locs_id = "site_id",
+  #   radius = c(0L, 1000L),
+  #   preprocess = process_modis_merge,
+  #   name_covariates = "MODIS_Grid_16DAY_500m_VI",
+  #   subdataset = "500m 16 days NDVI",
+  #   fun_summary = "mean"
+  # )
   
   output$linkDisplay = renderDataTable(datatable(weasd_covar, style = 'bootstrap', rownames = FALSE,
                                                  class = 'table table-striped table-hover table-dark'))

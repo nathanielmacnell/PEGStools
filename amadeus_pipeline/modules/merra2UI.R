@@ -1,18 +1,20 @@
+library(earthdatalogin)
+library(terra)
+library(sf)
+library(raster)
+
+# earthdatalogin::edl_netrc(username = "namato",
+#                           password = "Snow88board!",
+#                           netrc_path = "C:/Users/nick.amato/_netrc",
+#                           cookie_path = ".urs_cookies")
+
+
+
 dynamicUI <- function() {
   tagList(
-    selectInput(inputId = "selectCollection", label = "Collection",
-                choices = c("inst1_2d_asm_Nx", "inst1_2d_int_Nx", "inst1_2d_lfo_Nx",
-                            "inst3_3d_asm_Np", "inst3_3d_aer_Nv", "inst3_3d_asm_Nv", "inst3_3d_chm_Nv",
-                            "inst3_3d_gas_Nv", "inst3_2d_gas_Nx", "inst6_3d_ana_Np", "inst6_3d_ana_Nv",
-                            "statD_2d_slv_Nx", "tavg1_2d_adg_Nx", "tavg1_2d_aer_Nx", "tavg1_2d_chm_Nx",
-                            "tavg1_2d_csp_Nx", "tavg1_2d_flx_Nx", "tavg1_2d_int_Nx", "tavg1_2d_lfo_Nx",
-                            "tavg1_2d_lnd_Nx", "tavg1_2d_ocn_Nx", "tavg1_2d_rad_Nx", "tavg1_2d_slv_Nx",
-                            "tavg3_3d_mst_Ne", "tavg3_3d_trb_Ne", "tavg3_3d_nav_Ne", "tavg3_3d_cld_Np", 
-                            "tavg3_3d_mst_Np", "tavg3_3d_rad_Np", "tavg3_3d_tdt_Np", "tavg3_3d_trb_Np",
-                            "tavg3_3d_udt_Np", "tavg3_3d_odt_Np", "tavg3_3d_qdt_Np", "tavg3_3d_asm_Nv",
-                            "tavg3_3d_cld_Nv", "tavg3_3d_mst_Nv", "tavg3_3d_rad_Nv", "tavg3_2d_glc_Nx")),
-    dateRangeInput(inputId = 'dateRange', label = "Select Date Range", min = "1990-01-01", max = Sys.Date(),
-                   start = "2022-01-01", end = "2022-01-05")
+
+    actionButton(inputId = "checkAvailableData", label = "Check Available Data"),
+    textInput(inputId = "dataName", "Input Dataset Name", value = "MERRA2_100.tavgM_2d_slv_Nx.198101.nc4")
 
   )
 }
@@ -22,45 +24,28 @@ dynamicButton <- function(input, output, server, rv, session){
   t1 = Sys.time()
   shinybusy::show_modal_spinner(spin = "semipolar", text = "Downloading and linking...")
   
-  download_merra2(
-    collection = "inst1_2d_int_Nx",
-    date = "2024-01-01",
-    directory_to_save = "data/",
-    acknowledgement = TRUE,
-    download = FALSE, # NOTE: download skipped for examples,
-    remove_command = FALSE,
-  )
+  earthdatalogin::edl_download(href = paste0("https://goldsmr4.gesdisc.eosdis.nasa.gov/data/MERRA2_MONTHLY/M2TMNXSLV.5.12.4/1981/", input$dataName),
+                               dest = paste0("data/", input$dataName))
+
+  r = rast(paste0("data/",input$dataName))
+  names(r)
+
+
+  # Convert to sf points
+  participants_sf <- st_as_sf(rv$df, coords = c("gis_longitude", "gis_latitude"), crs = 4326)
+
+  # 3. Ensure CRS match between raster and points (reproject points if needed)
+  if (!compareCRS(r, participants_sf)) {
+    participants_sf <- st_transform(participants_sf, crs(r))
+  }
+
+  # 4. Extract raster values at participant points
+  vals <- terra::extract(r, vect(participants_sf))
+
+  # 5. Combine extracted values with participant data
+  result <- cbind(rv$df, vals)
   
-  # Download data
-  directory <- "data/"
-  download_merra2(
-    collection = "inst1_2d_asm_Nx",
-    date = c("2022-01-01", "2022-01-05"),
-    directory_to_save = tempdir(),
-    acknowledgement = TRUE,
-    download = FALSE, # NOTE: download skipped for examples,
-    remove_command = TRUE,
-  )
-  
-  # Read the downloaded data into R spatrast
-  
-  hms <- process_hms(
-    date = input$dateRange,
-    path = "data/data_files"
-  )
-  
-  # Join data to participants
-  locs <- data.frame(id = rv$df$epr_number, lon = rv$df$gis_longitude, lat = rv$df$gis_latitude)
-  
-  joined = calculate_hms(
-    from = hms,
-    locs = locs,
-    locs_id = "id",
-    radius = 0,
-    geom = 'sf'
-  )
-  
-  rv$joined = joined %>%
+  rv$joined = result %>%
     st_drop_geometry()
   
   output$linkDisplay = renderDataTable(datatable(rv$joined, rownames = FALSE),

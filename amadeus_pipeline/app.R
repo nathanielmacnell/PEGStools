@@ -13,6 +13,7 @@ library(shinyalert)
 library(stringr)
 library(bs4Dash)
 library(leaflet)
+library(shinyjs)
 
 # Get map data
 states <- map_data("state")
@@ -37,6 +38,7 @@ ui <- dashboardPage(
                     actionButton(inputId = 'downloadSelected', label = 'Download and Link', class = 'btn-primary')
   ),
   dashboardBody(
+    useShinyjs(),
     tags$head(
       includeCSS("www/styles.css")
     ),
@@ -77,7 +79,7 @@ ui <- dashboardPage(
 server <- function(input, output, session) {
   
   updateSelectInput(inputId = "selectDatasetName", label = "Dataset Name",
-                    choices = c("hms","narr"))
+                    choices = available_data)
   
   rv = reactiveValues(df = NULL,
                       joined = NULL,
@@ -178,11 +180,21 @@ server <- function(input, output, session) {
     
   })
   
+  observeEvent(input$checkAvailableData, {
+    observeEvent(input$checkAvailableData, {
+      runjs("window.open('https://goldsmr4.gesdisc.eosdis.nasa.gov/data/', '_blank')")
+    })
+  })
+  
   observeEvent(input$selectDatasetName, {
     source(paste0("modules/",input$selectDatasetName,"UI.R"))
     
     output$dynamicUI = renderUI(dynamicUI())
   }, ignoreInit = TRUE)
+  
+  observeEvent(input$dateRange, {
+    print(input$dateRange)
+  })
   
   # Interactive map
   output$participantMap <- renderLeaflet({
