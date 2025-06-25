@@ -33,67 +33,52 @@ dynamicButton <- function(input, output, server, rv, session){
     remove_command = TRUE
   )
   
-  # download_modis(
-  #   product = "MOD13A1",
-  #   version = "61",
-  #   horizontal_tiles = c(8,11),
-  #   vertical_tiles = c(5,5),
-  #   date = "2024-01-01",
-  #   directory_to_save = "data/",
-  #   nasa_earth_data_token = earth_data_token,
-  #   acknowledgement = TRUE,
-  #   download = TRUE,
-  #   hash = FALSE,
-  #   remove_command = TRUE
-  # )
+  download_modis(
+    product = "MOD13A1",
+    version = "61",
+    horizontal_tiles = c(8,11),
+    vertical_tiles = c(5,5),
+    date = "2024-01-01",
+    directory_to_save = "data/",
+    nasa_earth_data_token = earth_data_token,
+    acknowledgement = TRUE,
+    download = TRUE,
+    hash = FALSE,
+    remove_command = TRUE
+  )
   
   # Read the downloaded data into R (and apply some filters)
   
+  gdal_subdatasets(file = paste0(getwd(),
+                                 "/data/2024/001/MOD13A1.A2024001.h08v05.061.2024022142113.hdf"))
+  
   process <- process_modis_merge(
-    date = input$dateRange,
-    subdataset = "sur_refl_b01_1",
-    path = list.files("amadeus_pipeline/data", pattern = input$selectVariable,
+    date = "2024-01-01",
+    subdataset = "500m 16 days NDVI",
+    path = list.files("data/", pattern = 'MOD13A1',
                       full.names = TRUE,
                       recursive = TRUE),
     fun_agg = "mean"
   )
   
-  gdal_subdatasets(file = paste0(getwd(),
-                                 "/data/2024/001/MOD13A1.A2024001.h09v05.061.2024022132829.hdf"))
 
 
-  # process <- process_modis_merge(
-  #   date = "2024-01-01",
-  #   subdataset = "sur_refl_b01_1",
-  #   path = list.files("amadeus_pipeline/data/2024/001", pattern = "MOD09GA", full.names = TRUE),
-  #   fun_agg = "mean"
-  # )
-  
+
   # Join
   locs <- data.frame(id = rv$df$epr_number, lon = rv$df$gis_longitude, lat = rv$df$gis_latitude)
-  covar <- calculate_covariates(
-    covariate = input$selectDatasetName,
-    from = process,
-    locs = locs,
+  locs_sf <- st_as_sf(locs, coords = c("gis_longitude","gis_latitude"), crs = 4326)
+  linked_modis = calculate_modis(
+    from = list.files("data/2024/", pattern = "MOD13A1", full.names = TRUE, recursive = TRUE),
+    locs = locs_sf,
     locs_id = "id",
-    radius = 0,
-    geom = "sf"
+    radius = c(0L, 1000L),
+    preprocess = process_modis_merge,
+    name_covariates = "MODIS_Grid_16DAY_500m_VI",
+    subdataset = "500m 16 days NDVI",
+    fun_summary = "mean"
   )
   
-  # locs <- data.frame(site_id = epr.gis$epr_number, lon = epr.gis$gis_longitude, lat = epr.gis$gis_latitude)
-  # locs_sf <- st_as_sf(locs, coords = c("lon","lat"), crs = 4326)
-  # calculate_modis(
-  #   from = list.files("data/2024/001", pattern = "MOD13A1", full.names = TRUE),
-  #   locs = locs_sf,
-  #   locs_id = "site_id",
-  #   radius = c(0L, 1000L),
-  #   preprocess = process_modis_merge,
-  #   name_covariates = "MODIS_Grid_16DAY_500m_VI",
-  #   subdataset = "500m 16 days NDVI",
-  #   fun_summary = "mean"
-  # )
-  
-  output$linkDisplay = renderDataTable(datatable(weasd_covar, style = 'bootstrap', rownames = FALSE,
+  output$linkDisplay = renderDataTable(datatable(linked_modis, rownames = FALSE,
                                                  class = 'table table-striped table-hover table-dark'))
   
   shinybusy::remove_modal_spinner()
