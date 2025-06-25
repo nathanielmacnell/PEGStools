@@ -3,10 +3,6 @@ library(terra)
 library(sf)
 library(raster)
 
-# earthdatalogin::edl_netrc(username = "namato",
-#                           password = "Snow88board!",
-#                           netrc_path = "C:/Users/nick.amato/_netrc",
-#                           cookie_path = ".urs_cookies")
 
 
 
