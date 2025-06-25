@@ -79,7 +79,10 @@ ui <- dashboardPage(
 server <- function(input, output, session) {
   
   updateSelectInput(inputId = "selectDatasetName", label = "Dataset Name",
-                    choices = "hms","narr","tri","merra2")
+                    choices = c("Smoke Plume" = "hms",
+                                "North American Regional Reanalysis" = "narr",
+                                "Toxic Release Inventory" = "tri",
+                                "Modern-Era Retrospective Analysis" = "merra2"))
   
   rv = reactiveValues(df = NULL,
                       joined = NULL,
