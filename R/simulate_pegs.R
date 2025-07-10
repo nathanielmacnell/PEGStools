@@ -36,6 +36,7 @@ ggplot(epr.gis) +
 
 # save
 save(epr.gis, file='output/gis_simulated.RData')
+write.csv(epr.gis, file = 'output/gis_simulated.csv', row.names = FALSE)
 
 ##### 2. Simulate epr.ea #####
 epr.ea = data.frame(
@@ -47,3 +48,5 @@ epr.ea = data.frame(
 
 # save
 save(epr.ea, file='output/exposomea_simulated.RData')
+write.csv(epr.gis, file = 'output/exposomea_simulated.csv', row.names = FALSE)
+

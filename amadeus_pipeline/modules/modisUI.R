@@ -1,5 +1,5 @@
 
-earth_data_token = "eyJ0eXAiOiJKV1QiLCJvcmlnaW4iOiJFYXJ0aGRhdGEgTG9naW4iLCJzaWciOiJlZGxqd3RwdWJrZXlfb3BzIiwiYWxnIjoiUlMyNTYifQ.eyJ0eXBlIjoiVXNlciIsInVpZCI6Im5hbWF0byIsImV4cCI6MTc1MjUwNDg2NywiaWF0IjoxNzQ3MzIwODY3LCJpc3MiOiJodHRwczovL3Vycy5lYXJ0aGRhdGEubmFzYS5nb3YiLCJpZGVudGl0eV9wcm92aWRlciI6ImVkbF9vcHMiLCJhY3IiOiJlZGwiLCJhc3N1cmFuY2VfbGV2ZWwiOjN9.Jsz2b2pyj_NW5m7mtOtexYdf2nlWLZJOod5mEmVQ49zm4OflZWsrULGRKxyIz_THFYMLo7LiufsFW6GZka0h0Z2xZveyZr75DMImlVicSIFl_iWyyfxtA8oVBcFQ1_lq9DWTIs_BL3uJJMmDaKsxu69h4TdHDIT47ytjaVdIfTyo8NDlUlAdgsct0qhqNuOLwhy7qbiHouTYQ0ocEWsDc3cZSZvDXAdCoTYFIor3OGoTk-qg7k1wun7EkbeDM4s9-gDFv64sB4EUlA6KGtuVb6CYCVHsWgIgG8TE9J-CSZQGIB6q3qwwbJZMT_d_iyLg552ejA0RWnfPBOCjyExOKg"
+earth_data_token = "eyJ0eXAiOiJKV1QiLCJvcmlnaW4iOiJFYXJ0aGRhdGEgTG9naW4iLCJzaWciOiJlZGxqd3RwdWJrZXlfb3BzIiwiYWxnIjoiUlMyNTYifQ.eyJ0eXBlIjoiVXNlciIsInVpZCI6Im5hbWF0byIsImV4cCI6MTc1MjU5MzM0NywiaWF0IjoxNzQ3NDA5MzQ3LCJpc3MiOiJodHRwczovL3Vycy5lYXJ0aGRhdGEubmFzYS5nb3YiLCJpZGVudGl0eV9wcm92aWRlciI6ImVkbF9vcHMiLCJhY3IiOiJlZGwiLCJhc3N1cmFuY2VfbGV2ZWwiOjN9.jIqZbGtxQsYGt5l30EW5MBybtHw-AjKSvVvfMLCwlLrcn69gsRYcTWDgxhybZ64TbbsD_2XHHcLHddFMvc8j7aN6W2nQHlWWOdp5Z0c7rCLTc5lzhbKt156FymVGR62U4Lee-Z5a0T6IlAVxsZSi2yx9KtOPT36eL9Rcr9SEPENNauiEUwhiLLuXKT3PbgomHQRg_jxMytQ7xpFFpObIGKIoPqKLzdl-goFqQwxmeyMiRbMPiWcVygd7NK1TxwLfUsGDHD99XO-DvbxFgw256JvEQzNhRl0FTzizbUfIUgUwz29_57l2NjZHS04WPgi-hjQ2-724qFRppojUuKyDgw"
 
 dynamicUI <- function() {
   tagList(
@@ -10,7 +10,7 @@ dynamicUI <- function() {
                                    "MOD06_L2", "MCD19A2", "VNP46A2")),
 
     dateRangeInput(inputId = 'dateRange', label = "Select Date Range", min = "1990-01-01", max = Sys.Date(),
-                   start = "2022-01-01", end = "2022-01-05")
+                   start = "2024-01-01", end = "2024-01-05")
   )
 }
 
@@ -20,12 +20,15 @@ dynamicButton <- function(input, output, server, rv, session){
   
   directory <- "data/"
   download_modis(
-    product = input$selectVariable,
+    # product = input$product,
+    product = "MOD09GA",
     version = "61",
     horizontal_tiles = c(8,8),
     vertical_tiles = c(4,4),
-    date = input$dateRange,
-    directory_to_save = directory,
+    # date = input$dateRange,
+    date = c("2024-01-01", "2024-01-05"),
+    directory_to_save = "data/",
+    # directory_to_save = directory,
     nasa_earth_data_token = earth_data_token,
     acknowledgement = TRUE,
     download = TRUE,
@@ -33,19 +36,19 @@ dynamicButton <- function(input, output, server, rv, session){
     remove_command = TRUE
   )
   
-  download_modis(
-    product = "MOD13A1",
-    version = "61",
-    horizontal_tiles = c(8,11),
-    vertical_tiles = c(5,5),
-    date = "2024-01-01",
-    directory_to_save = "data/",
-    nasa_earth_data_token = earth_data_token,
-    acknowledgement = TRUE,
-    download = TRUE,
-    hash = FALSE,
-    remove_command = TRUE
-  )
+  # download_modis(
+  #   product = "MOD13A1",
+  #   version = "61",
+  #   horizontal_tiles = c(8,11),
+  #   vertical_tiles = c(5,5),
+  #   date = "2024-01-01",
+  #   directory_to_save = "data/",
+  #   nasa_earth_data_token = earth_data_token,
+  #   acknowledgement = TRUE,
+  #   download = TRUE,
+  #   hash = FALSE,
+  #   remove_command = TRUE
+  # )
   
   # Read the downloaded data into R (and apply some filters)
   

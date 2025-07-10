@@ -14,6 +14,10 @@ library(stringr)
 library(bs4Dash)
 library(leaflet)
 library(shinyjs)
+library(tigris)
+library(stringr)
+library(httr)
+library(rvest)
 
 # Get map data
 states <- map_data("state")
@@ -79,12 +83,16 @@ ui <- dashboardPage(
 server <- function(input, output, session) {
   
   updateSelectInput(inputId = "selectDatasetName", label = "Dataset Name",
-                    choices = c("Smoke Plume" = "hms",
-                                "North American Regional Reanalysis" = "narr",
-                                "Toxic Release Inventory" = "tri",
-                                "Modern-Era Retrospective Analysis" = "merra2"))
+                    choices = c("Smoke Plume (NOAA)" = "hms",
+                                "Consortium National Land Cover (NLCD)" = "nlcd",
+                                "North American Regional Reanalysis (NARR)" = "narr",
+                                "Toxic Release Inventory (TRI)" = "tri",
+                                "National Emissions Inventory (NEI)" = "nei",
+                                "Modern-Era Retrospective Analysis (MERRA-2)" = "merra2",
+                                "Global Roads (SEDAC)" = "sedac"))
   
   rv = reactiveValues(df = NULL,
+                      orig = NULL,
                       joined = NULL,
                       time_taken = NULL)
   
@@ -92,11 +100,9 @@ server <- function(input, output, session) {
   observeEvent(input$fileInput, {
     print(input$fileInput$datapath)
     
-    load(input$fileInput$datapath)
+    rv$df = read.csv(input$fileInput$datapath)
     
-    rv$df = epr.gis
-    
-    output$inputDisplay = renderDataTable(datatable(epr.gis, rownames = FALSE))
+    output$inputDisplay = renderDataTable(datatable(rv$df, rownames = FALSE))
     
   })
   
@@ -223,6 +229,20 @@ server <- function(input, output, session) {
         lat2 = ~max(gis_latitude, na.rm = TRUE)
       )
   })
+  
+  observeEvent(input$selectYearNEI, {
+    file_names = list.files(path = paste0("../for_host/",input$selectYearNEI), pattern = "\\.rds")
+    file_names = str_match(string = file_names, pattern = "(.*?)\\.rds")[,2]
+    
+    updateVirtualSelect(inputId = "fileNameNEI", choices = c(file_names))
+    
+  })
+  
+  observeEvent(input$selectChemicalNEI, {
+    rv$joined = rv$orig %>%
+      filter(description %in% input$selectChemicalNEI)
+  })
+
   
   
   

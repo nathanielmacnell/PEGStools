@@ -1,10 +1,6 @@
-source("functions/rework_process_tri.R")
-
 dynamicUI <- function() {
   tagList(
-    selectInput(inputId = "selectYear", label = "Select Year", choices = c(2023:1988),
-                selected = 2022,
-                multiple = FALSE)
+    h3("Date Range 1980-2010")
   )
 }
 
@@ -13,37 +9,20 @@ dynamicButton <- function(input, output, server, rv, session){
   t1 = Sys.time()
   shinybusy::show_modal_spinner(spin = "semipolar", text = "Downloading and linking...")
   
-  # Download data
-  directory <- "data/"
-  download_tri(
-    year = input$selectYear,
-    directory_to_save = "data/",
-    acknowledgement = TRUE,
-    download = TRUE,
-    remove_command = TRUE
-  )
+  # saveRDS(groads, "amadeus_pipeline/data/sedac/gROADS-v1-americas.rds")
+  groads <- readRDS("data/sedac/gROADS-v1-americas.rds")
   
-  # Read the downloaded data into R spatrast
-  
-  tri <- rework_process_tri(
-    path = "./data",
-    year = input$selectYear
-  )
   
   # Join data to participants
-  # load("output/gis_simulated.RData")
-  # locs <- epr.gis
-  # locs <- data.frame(id = locs$epr_number, lon = locs$gis_longitude, lat = locs$gis_latitude)
-  
-  
   locs <- data.frame(id = rv$df$epr_number, lon = rv$df$gis_longitude, lat = rv$df$gis_latitude)
-  locs_sf = st_as_sf(locs, coords = c("lon","lat"), crs = "EPSG:4269")
   
-  joined = calculate_tri(
-    from = tri,
-    locs = locs_sf,
+  joined = calculate_groads(
+    from = groads,
+    locs = locs,
     locs_id = "id",
-    radius = 1000L
+    radius = 1000,
+    fun = "sum",
+    geom = FALSE
   )
   
   rv$joined = joined %>%
