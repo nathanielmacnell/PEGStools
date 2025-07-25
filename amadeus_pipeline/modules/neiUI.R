@@ -68,7 +68,13 @@ dynamicButton <- function(input, output, server, rv, session){
     st_drop_geometry()
   rv$orig = rv$joined
   
-  output$linkDisplay = renderDataTable(datatable(rv$joined, rownames = FALSE),
+  output$linkDisplay = renderDataTable(datatable(rv$joined, rownames = FALSE,
+                                                 extensions = "Buttons",
+                                                 options = list(
+                                                   dom = 'Bfrtip',
+                                                   buttons = 'csv',
+                                                   pageLength = 10
+                                                 )),
                                        class = 'table table-striped table-hover table-dark')
   
   shinybusy::remove_modal_spinner()

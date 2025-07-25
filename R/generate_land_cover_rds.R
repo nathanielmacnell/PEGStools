@@ -11,3 +11,15 @@ for(i in 1:length(all_tif)){
   
   saveRDS(tmp, paste0("for_host/nlcd/Land_Cover_",file_year,".rds"))
 }
+
+######## EDIT:
+# Need to convert files to EPSG:4326 and as.numeric for storage
+tictoc::tic()
+for(i in 2015:2024){
+  landcover <- terra::rast(paste0("C:/Users/nick.amato/Downloads/Annual_NLCD_LndCov_2015-2024_CU_C1V1/Annual_NLCD_LndCov_",i,"_CU_C1V1.tif"))
+  
+  num_landcover <- as.numeric(landcover)
+  
+  terra::writeRaster(num_landcover, paste0("for_host/nlcd/Num_Land_Cover_",i,".tif"), overwrite = TRUE)
+}
+tictoc::toc()

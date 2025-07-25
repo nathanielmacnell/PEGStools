@@ -26,12 +26,12 @@ states <- map_data("state")
 available_data = list.files('modules', full.names = FALSE)
 available_data = str_match(available_data, "(.*?)UI")[,2]
 
-# Only load smoke plume data/narr functionality for now
 
 # Define UI for application that draws a histogram
 ui <- dashboardPage(
-  dashboardHeader(title = "Amadeus Pipeline", status = "primary"),
+  dashboardHeader(title = "Amadeus Pipeline", disable = TRUE),
   dashboardSidebar( width = "400px",
+                    status = 'primary',
                     div(class="file-input",
                         fileInput(inputId = "fileInput", label = "Upload Participant Data"),
                     ),
@@ -39,9 +39,12 @@ ui <- dashboardPage(
                     selectInput(inputId = "selectDatasetName", label = "Dataset Name",
                                 choices = c("")),
                     uiOutput("dynamicUI"),
+                    virtualSelectInput(inputId = "filterSelect", label = "Select Variables to Remove", choices = NULL,
+                                       multiple = TRUE),
                     actionButton(inputId = 'downloadSelected', label = 'Download and Link', class = 'btn-primary')
   ),
   dashboardBody(
+    dashboardthemes::shinyDashboardThemes(theme = "poor_mans_flatly"),
     useShinyjs(),
     tags$head(
       includeCSS("www/styles.css")
@@ -82,6 +85,8 @@ ui <- dashboardPage(
 # Define server logic
 server <- function(input, output, session) {
   
+  shinyjs::hide("filterSelect")
+  
   updateSelectInput(inputId = "selectDatasetName", label = "Dataset Name",
                     choices = c("Smoke Plume (NOAA)" = "hms",
                                 "Consortium National Land Cover (NLCD)" = "nlcd",
@@ -102,7 +107,51 @@ server <- function(input, output, session) {
     
     rv$df = read.csv(input$fileInput$datapath)
     
+    showModal(modalDialog(
+      title = "Choose you lat/lon variables",
+      selectInput("lat_var", "Latitude Variable:", choices = names(rv$df)),
+      selectInput("lon_var", "Longitude Variable:", choices = names(rv$df)),
+      easyClose = FALSE,
+      footer = tagList(
+        modalButton("Cancel"),
+        actionButton("confirm_selection", "Confirm")
+      )
+    ))    
+    
+    
+  })
+  
+  observeEvent(input$confirm_selection, {
+    removeModal()
+    
+    rv$df %>%
+      rename('gis_latitude' = input$lat_var,
+             'gis_longitude' = input$lon_var)
+    
     output$inputDisplay = renderDataTable(datatable(rv$df, rownames = FALSE))
+    
+    output$participantMap <- renderLeaflet({
+
+      leaflet(rv$df) %>%
+        addProviderTiles(providers$CartoDB.Positron) %>%
+        addCircleMarkers(
+          lng = ~gis_longitude,
+          lat = ~gis_latitude,
+          radius = 5,
+          color = "#007bff",
+          fillColor = "#007bff",
+          fillOpacity = 0.7,
+          popup = ~paste("ID:", epr_number, "<br>",
+                         "Lat:", round(gis_latitude, 4), "<br>",
+                         "Lon:", round(gis_longitude, 4))
+        ) %>%
+        fitBounds(
+          lng1 = ~min(gis_longitude, na.rm = TRUE),
+          lat1 = ~min(gis_latitude, na.rm = TRUE),
+          lng2 = ~max(gis_longitude, na.rm = TRUE),
+          lat2 = ~max(gis_latitude, na.rm = TRUE)
+        )
+    })
     
   })
   
@@ -187,6 +236,13 @@ server <- function(input, output, session) {
     
     dynamicButton(input, output, server, rv, session)
     
+    if(!is.null(rv$joined)){
+      
+      shinyjs::show("filterSelect")
+      updateVirtualSelect(inputId = "filterSelect", label = "Select Variables to Remove",
+                          choices = names(rv$joined), selected = names(rv$joined))
+    }
+    
   })
   
   observeEvent(input$checkAvailableData, {
@@ -206,29 +262,7 @@ server <- function(input, output, session) {
   })
   
   # Interactive map
-  output$participantMap <- renderLeaflet({
-    req(rv$df)
-    
-    leaflet(rv$df) %>%
-      addProviderTiles(providers$CartoDB.Positron) %>%
-      addCircleMarkers(
-        lng = ~gis_longitude,
-        lat = ~gis_latitude,
-        radius = 5,
-        color = "#007bff",
-        fillColor = "#007bff",
-        fillOpacity = 0.7,
-        popup = ~paste("ID:", epr_number, "<br>",
-                       "Lat:", round(gis_latitude, 4), "<br>",
-                       "Lon:", round(gis_longitude, 4))
-      ) %>%
-      fitBounds(
-        lng1 = ~min(gis_longitude, na.rm = TRUE),
-        lat1 = ~min(gis_latitude, na.rm = TRUE),
-        lng2 = ~max(gis_longitude, na.rm = TRUE),
-        lat2 = ~max(gis_latitude, na.rm = TRUE)
-      )
-  })
+
   
   observeEvent(input$selectYearNEI, {
     file_names = list.files(path = paste0("../for_host/",input$selectYearNEI), pattern = "\\.rds")
