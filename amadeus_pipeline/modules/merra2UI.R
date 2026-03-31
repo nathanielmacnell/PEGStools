@@ -36,10 +36,10 @@ dynamicButton <- function(input, output, server, rv, session){
   shinybusy::show_modal_spinner(spin = "semipolar", text = "Downloading and linking...")
   
   download_merra2_check(
-    # collection = "inst1_2d_int_Nx",
-    collection = input$selectCollection,
-    date = input$selectDateRange,
-    # date = c("2024-01-01"),
+    collection = "inst1_2d_asm_Nx",
+    # collection = input$selectCollection,
+    # date = input$selectDateRange,
+    date = c("2024-01-01"),
     directory_to_save = "data/",
     acknowledgement = TRUE,
     download = TRUE
@@ -63,7 +63,10 @@ dynamicButton <- function(input, output, server, rv, session){
   
   tmp_names = paste0(base_name, date_range, ".nc4")
   
-  files_of_interest = list.files(paste0("data/",input$selectCollection))
+  
+  # setwd("amadeus_pipeline")
+
+    files_of_interest = list.files(paste0("data/",input$selectCollection))
   # files_of_interest = list.files(paste0("data/","inst1_2d_int_Nx"))
   files_of_interest = files_of_interest[files_of_interest %in% tmp_names]
   files_of_interest = paste0("data/",input$selectCollection,"/", files_of_interest)

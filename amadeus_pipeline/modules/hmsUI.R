@@ -1,10 +1,32 @@
 dynamicUI <- function() {
   tagList(
     dateRangeInput(inputId = 'dateRange', label = "Select Date Range", min = "1990-01-01", max = Sys.Date(),
-                   start = "2022-01-01", end = "2022-01-05"),
+                   start = "2023-06-01", end = "2023-06-08"),
     sliderInput(inputId = 'selectBufferRadius', label = "Buffer Radius (meters)", min = 0, max = 1000, value = 0, step = 10)
   )
 }
+
+dynamicUI2 <- function(input, output, server, rv, session) {
+  tagList(
+    strong(h3("Calculate average smoke cover by ID")),
+    virtualSelectInput(inputId = "averageGroupSelect", label = "Select Column to Group by",
+                       choices = names(rv$joined), multiple = FALSE),
+    virtualSelectInput(inputId = "averageSelect", label = "Select Columns to Average",
+                       choices = names(rv$joined), multiple = TRUE),
+    br(),
+    actionButton(inputId = "dynamicManipulateButton", label = "Apply Averages")
+  )
+}
+
+dynamicManipulateButton <- function(input, output, server, rv, session) {
+  print(input$averageGroupSelect)
+  rv$manipulated = rv$manipulated %>%
+    group_by(across(all_of(input$averageGroupSelect))) %>%
+    summarize(
+      across(all_of(input$averageSelect), mean, na.rm = TRUE)
+    )
+}
+
 
 dynamicButton <- function(input, output, server, rv, session){
   
@@ -63,14 +85,44 @@ dynamicButton <- function(input, output, server, rv, session){
     rv$joined = joined %>%
       st_drop_geometry()
     
+    rv$manipulated = joined %>%
+      st_drop_geometry()
+    
     output$linkDisplay = renderDataTable(datatable(rv$joined, rownames = FALSE,
                                                    extensions = "Buttons",
                                                    options = list(
                                                      dom = 'Bfrtip',
-                                                     buttons = 'csv',
+                                                     buttons = list(
+                                                       list(
+                                                         extend = "csv",
+                                                         text = "Download CSV",
+                                                         exportOptions = list(
+                                                           modifier = list(page = "all")  # export all rows, not just visible
+                                                         )
+                                                       )
+                                                     ),
                                                      pageLength = 10
                                                    )),
-                                         class = 'table table-striped table-hover table-dark')
+                                         class = 'table table-striped table-hover table-dark',
+                                         server = FALSE)
+    
+    output$manipulatedDisplay = renderDataTable(datatable(rv$manipulated, rownames = FALSE,
+                                                   extensions = "Buttons",
+                                                   options = list(
+                                                     dom = 'Bfrtip',
+                                                     buttons = list(
+                                                       list(
+                                                         extend = "csv",
+                                                         text = "Download CSV",
+                                                         exportOptions = list(
+                                                           modifier = list(page = "all")  # export all rows, not just visible
+                                                         )
+                                                       )
+                                                     ),
+                                                     pageLength = 10
+                                                   )),
+                                         class = 'table table-striped table-hover table-dark',
+                                         server = FALSE)
     
     shinybusy::remove_modal_spinner()
     
@@ -79,7 +131,8 @@ dynamicButton <- function(input, output, server, rv, session){
                            type = "success")
     
     t2 = Sys.time()
-    rv$time_taken = round(t2 - t1, 2)
+    rv$time_taken = round(as.numeric(t2 - t1, units = "mins"), 2)
+    print(rv$time_taken)
     updateTabItems(session, inputId = "Tabs", selected = "Linked Data")
   }
 

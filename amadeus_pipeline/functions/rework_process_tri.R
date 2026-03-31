@@ -23,6 +23,13 @@ rework_process_tri <- function(
   dt_tri <- dt_tri %>%
     filter(YEAR %in% year)
   
+  chem_names_ids = dt_tri %>%
+    dplyr::select(CHEMICAL, TRI_CHEMICAL_COMPOUND_ID) %>%
+    distinct(TRI_CHEMICAL_COMPOUND_ID, .keep_all = TRUE)
+  
+  assign("chem_names_ids", chem_names_ids, .GlobalEnv)
+  
+  
   
   # depending on the way the chemicals are summarized
   # Unit is kilogram

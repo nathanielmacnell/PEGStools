@@ -43,16 +43,16 @@ download_merra2_check <- function(
     date = c("2018-01-01", "2018-01-01"),
     directory_to_save = NULL,
     acknowledgement = FALSE,
-    download = FALSE,
+    download = TRUE,
     remove_command = FALSE,
     hash = FALSE
 ) {
-  collection = "inst1_2d_int_Nx"
-  date = c("2024-01-01", '2024-01-03')
-  directory_to_save = "data/"
-  acknowledgement = TRUE
-  download = TRUE # NOTE: download skipped for examples,
-  remove_command = FALSE
+  # collection = "inst1_2d_int_Nx"
+  # date = c("2024-01-01", '2024-01-03')
+  # directory_to_save = "data/"
+  # acknowledgement = TRUE
+  # download = TRUE # NOTE: download skipped for examples,
+  # remove_command = FALSE
   
   print('hi')
   #### check for data download acknowledgement

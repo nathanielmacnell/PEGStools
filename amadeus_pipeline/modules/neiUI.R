@@ -3,19 +3,18 @@ dynamicUI <- function() {
     selectInput(inputId = "selectYearNEI", label = "Select Year", choices = c(2008, 2011, 2014, 2017, 2020, 2023),
                 multiple = FALSE),
     virtualSelectInput(inputId = "fileNameNEI", label = "File Name",choices = NULL),
-    virtualSelectInput(inputId = "selectChemicalNEI", label = "Select Chemicals of Interest",
-                       choices = NULL, multiple = TRUE, search = TRUE)
+    
   )
 }
 
 dynamicButton <- function(input, output, server, rv, session){
   
   
-  t1 = Sys.time()
-  shinybusy::show_modal_spinner(spin = "semipolar", text = "Downloading and linking...")
+  shinybusy::show_modal_spinner(spin = "semipolar", text = "Loading Data...")
   
   df = readRDS(paste0("../for_host/",input$selectYearNEI,"/",input$fileNameNEI,".rds"))
   # df = readRDS(paste0("for_host/2020/for_host_2020_2020nei_onroad_byregion.rds"))
+  
   
   if(input$selectYearNEI == 2008 | input$selectYearNEI == 2011){
     df = df %>%
@@ -38,10 +37,16 @@ dynamicButton <- function(input, output, server, rv, session){
       group_by(GEOID, pollutant.code, pollutant.desc) %>%
       summarise(sum_emissions = sum(total.emissions))
   }
-
   
+  rv$df_chem = df
+  
+  if(input$selectYearNEI < 2014){
+    county_year = 2013
+  }else{
+    couty_year = input$selectYearNEI
+  }
   # counties = tigris::counties(cb = TRUE, year = input$selectYear, class = 'sf')
-  counties = tigris::counties(cb = TRUE, year = 2020, class = 'sf')
+  counties = tigris::counties(cb = TRUE, year = county_year, class = 'sf')
   
   
   # locs = epr.gis
@@ -54,12 +59,69 @@ dynamicButton <- function(input, output, server, rv, session){
   
   locs_sf = st_as_sf(locs, coords = c("lon", "lat"), crs = st_crs(counties))
   
-  joined_participants = st_join(locs_sf, counties[,c('GEOID')])
+  rv$locs_sf = locs_sf
   
-  # Read the downloaded data into R spatrast
+  shinybusy::remove_modal_spinner()
+  
+  if(input$selectYearNEI %in% c(2008, 2011)){
+    showModal(modalDialog(
+      title = "Choose Chemicals of Interest",
+      virtualSelectInput(inputId = "selectChemicalNEI", label = "Select Chemicals of Interest",
+                         choices = unique(df$description), selected = unique(df$description),
+                         multiple = TRUE, search = TRUE, disableSelectAll = FALSE),
+      easyClose = FALSE,
+      footer = tagList(
+        modalButton("Cancel"),
+        actionButton("confirm_chems", "Confirm")
+      )
+    ))
+  }else if(input$selectYearNEI == 2014){
+    showModal(modalDialog(
+      title = "Choose Chemicals of Interest",
+      virtualSelectInput(inputId = "selectChemicalNEI", label = "Select Chemicals of Interest",
+                         choices = unique(df$pollutant_desc), selected = unique(df$pollutant_desc),
+                         multiple = TRUE, search = TRUE, disableSelectAll = FALSE),
+      easyClose = FALSE,
+      footer = tagList(
+        modalButton("Cancel"),
+        actionButton("confirm_chems", "Confirm")
+      )
+    ))
+  }else if(input$selectYearNEI %in% c(2017, 2020)){
+    showModal(modalDialog(
+      title = "Choose Chemicals of Interest",
+      virtualSelectInput(inputId = "selectChemicalNEI", label = "Select Chemicals of Interest",
+                         choices = unique(df$pollutant.desc), selected = unique(df$pollutant.desc),
+                         multiple = TRUE, search = TRUE, disableSelectAll = FALSE),
+      easyClose = FALSE,
+      footer = tagList(
+        modalButton("Cancel"),
+        actionButton("confirm_chems", "Confirm")
+      )
+    ))
+  }
+  
+}
+
+CloseModalFunction <- function(input, output, server, rv, session){
+  t1 = Sys.time()
+  shinybusy::show_modal_spinner(spin = "semipolar", text = "Downloading and linking...")
+
+  if(input$selectYearNEI %in% c(2008, 2011)){
+    rv$df_chem = rv$df_chem %>%
+      filter(description %in% input$selectChemicalNEI)
+  }else if(input$selectYearNEI == 2014){
+    rv$df_chem = rv$df_chem %>%
+      filter(pollutant_desc %in% input$selectChemicalNEI)
+  }else if(input$selectYearNEI %in% c(2017, 2020)){
+    rv$df_chem = rv$df_chem %>%
+      filter(pollutant.desc %in% input$selectChemicalNEI)
+  }
+  
+  joined_participants = st_join(rv$locs_sf, counties[,c('GEOID')])
   
   joined_participants_2 = joined_participants %>%
-    left_join(df)
+    left_join(rv$df_chem)
   
   # Join data to participants
   
@@ -86,19 +148,4 @@ dynamicButton <- function(input, output, server, rv, session){
   t2 = Sys.time()
   rv$time_taken = round(t2 - t1, 2)
   updateTabItems(session, inputId = "Tabs", selected = "Linked Data")
-  
-  if(input$selectYearNEI == 2008 | input$selectYearNEI == 2011){
-    updateVirtualSelect(inputId = "selectChemicalNEI", choices = unique(rv$joined$description),
-                        selected = unique(rv$joined$description))
-  }else if(input$selectYearNEI == 2014){
-    updateVirtualSelect(inputId = "selectChemicalNEI", choices = unique(rv$joined$pollutant_desc),
-                        selected = unique(rv$joined$pollutant_desc))
-  }else if(input$selectYearNEI == 2017 | input$selectYearNEI == 2020){
-    updateVirtualSelect(inputId = "selectChemicalNEI", choices = unique(rv$joined$pollutant.desc),
-                        selected = unique(rv$joined$pollutant.desc))
-  }
-
-  
-  
-  
 }

@@ -1,10 +1,55 @@
-.file-input {
-  border: 5px dotted #ADD8E6;
+/*.file-input {
+  border: 5px dotted white !important;
   padding: 10px;              
   border-radius: 5px;         
-  background-color: #f9f9f9;  
-}
+  background-color: #222d32;  
+}*/
 
 .inner h2, h1{
   color: white;
+}
+
+.bg-purple {
+  background-color: #2c3e50 !important;
+}
+
+.modal-header, .modal-body {
+  background-color: #2c3e50;
+}
+
+.shinybusy-modal {
+  background-color: white;
+}
+
+.control-label, .modal-title {
+  color: white;
+}
+
+.box-body .shiny-input-container .control-label {
+  color: black;
+}
+
+.link-tab-box .box-header {
+  color: white;
+  background-color: #2c3e50;
+}
+
+.icon-large {
+  color: white !important;
+}
+
+.skin-black .sidebar-menu > li.active > a{
+  background: slategray !important;
+}
+
+.btn-colored {
+  color: white;
+}
+
+.box-header {
+  background-color: #2c3e50 !important;
+}
+
+.small-box {
+  background-color: #2c3e50 !important;
 }
